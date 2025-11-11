@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>本地 PDF 批次加密 & ZIP 下載（不經伺服器）</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main>
+    <h1>本地 PDF 批次加密 & ZIP 下載（CDN 版）</h1>
+
+    <form id="form">
+      <div class="field">
+        <label>1) 上傳 CSV（filename;password，需含表頭）</label>
+        <input id="csv" type="file" accept=".csv" required />
+      </div>
+      <div class="field">
+        <label>2) 上傳多個 PDF（可一次選取 ~100 份）</label>
+        <input id="pdfs" type="file" accept="application/pdf" multiple required />
+      </div>
+
+      <div class="field row">
+        <button id="btn-parse" type="button">解析 CSV</button>
+        <button id="btn-start" type="button" disabled>開始加密</button>
+        <button id="btn-download" type="button" disabled>下載 ZIP</button>
+      </div>
+
+      <div id="hints" class="muted">所有處理都在你的瀏覽器本機執行，不會上傳到伺服器。</div>
+    </form>
+
+    <section>
+      <h2>預覽 / 對應結果</h2>
+      <div id="preview"></div>
+    </section>
+
+    <section>
+      <h2>進度</h2>
+      <div class="progress"><div id="bar" class="bar" style="width:0%"></div></div>
+      <div id="stats" class="muted">等待開始…</div>
+    </section>
+
+    <section>
+      <h2>紀錄</h2>
+      <pre id="log" class="log"></pre>
+    </section>
+  </main>
+
+  <!-- 前端函式庫（CDN） -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+  <!-- 主程式（ESM 模組） -->
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

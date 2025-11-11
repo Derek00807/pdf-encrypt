@@ -1,0 +1,12 @@
+{
+  "name": "pdf-encrypt",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "wrangler pages dev ./public --local --port=8788",
+    "start": "wrangler pages dev ./public --local --port=8788"
+  },
+  "devDependencies": {
+    "wrangler": "^3.80.0"
+  }
+}
