@@ -25,3 +25,6 @@ filename;password
 ## 相依（CDN）
 - @neslinesli93/qpdf-wasm 0.3.0（qpdf WASM）
 - PapaParse、JSZip、FileSaver
+
+## 版本訊息
+- v1.0
