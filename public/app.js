@@ -1,5 +1,5 @@
 // public/app.js
-// 延遲載入 qpdf-wasm（開始加密時才初始化）
+// 只貼上密碼檔、多個 PDF，上述流程；輸出 ZIP 內含兩個資料夾
 import createQpdf from "https://cdn.jsdelivr.net/npm/@neslinesli93/qpdf-wasm@0.3.0/dist/qpdf.mjs";
 const QPDF_WASM_URL =
   "https://cdn.jsdelivr.net/npm/@neslinesli93/qpdf-wasm@0.3.0/dist/qpdf.wasm";
@@ -32,7 +32,6 @@ $("#btn-start").addEventListener("click", async () => {
   if (!files.length) return alert("請選擇 PDF 檔案");
   if (files.length > 100) return alert("最多同時處理 100 份 PDF，請分批上傳");
 
-  // 解析貼上的每行「檔名.pdf;密碼;」
   const mapping = parseMapping(text); // Map<filename, password>
   if (!mapping.size) return alert("未解析到任何有效的『檔名→密碼』對應");
 
@@ -46,10 +45,21 @@ $("#btn-start").addEventListener("click", async () => {
     const q = await getQpdf();
     const zip = new JSZip();
 
+    // 兩個資料夾
+    const okFolder   = zip.folder("encrypted_已加密");
+    const badFolder  = zip.folder("not_encrypted_未成功加密");
+
     const total = files.length;
     let done = 0, ok = 0, skipped = 0, failed = 0;
 
-    // 併發限制，避免一次處理過多
+    // 供 SUMMARY.txt 使用
+    const reportLines = [];
+    reportLines.push(`# PDF 批次加密結果`);
+    reportLines.push(`# 生成時間：${new Date().toISOString()}`);
+    reportLines.push(`# 規則：貼上「檔名.pdf;密碼;」→ 找不到即視為未成功加密（原檔放入 not_encrypted_未成功加密/）`);
+    reportLines.push("");
+
+    // 併發限制
     const CONCURRENCY = 4;
     const queue = files.slice();
 
@@ -62,16 +72,20 @@ $("#btn-start").addEventListener("click", async () => {
         if (!pw) {
           skipped++; done++; updateProgress(done, total, ok, skipped, failed);
           log(`[SKIP] 找不到密碼：${file.name}`);
-          continue; // 不加入 zip
+          reportLines.push(`SKIP\t${file.name}\t找不到密碼`);
+          // 把「原始 PDF」放到未成功資料夾，方便後續人工處理
+          const origBytes = new Uint8Array(await file.arrayBuffer());
+          badFolder.file(file.name, origBytes);
+          continue;
         }
 
         try {
-          const inPath = `/in_${crypto.randomUUID()}.pdf`;
+          const inPath  = `/in_${crypto.randomUUID()}.pdf`;
           const outPath = `/out_${crypto.randomUUID()}.pdf`;
-          const input = new Uint8Array(await file.arrayBuffer());
+          const input   = new Uint8Array(await file.arrayBuffer());
           q.FS.writeFile(inPath, input);
 
-          // 使用命名參數避免 - 開頭密碼解析問題；AES-256
+          // AES-256，加 user/owner 同密碼；用命名參數避免 - 開頭密碼解析問題
           q.callMain([
             "--encrypt",
             `--user-password=${pw}`,
@@ -83,21 +97,35 @@ $("#btn-start").addEventListener("click", async () => {
           ]);
 
           const output = q.FS.readFile(outPath);
-          zip.file(file.name, output);
+          okFolder.file(file.name, output);
 
           try { q.FS.unlink(inPath); } catch {}
           try { q.FS.unlink(outPath); } catch {}
 
           ok++; done++; updateProgress(done, total, ok, skipped, failed);
           log(`[OK]   加密完成：${file.name}`);
+          reportLines.push(`OK\t${file.name}\t加密成功`);
         } catch (e) {
           failed++; done++; updateProgress(done, total, ok, skipped, failed);
-          log(`[ERR]  加密失敗：${file.name} → ${e?.message || e}`);
+          const msg = e?.message || String(e);
+          log(`[ERR]  加密失敗：${file.name} → ${msg}`);
+          reportLines.push(`ERR\t${file.name}\t${msg}`);
+
+          // 失敗也把原檔放到未成功資料夾
+          try {
+            const origBytes = new Uint8Array(await file.arrayBuffer());
+            badFolder.file(file.name, origBytes);
+          } catch {}
         }
       }
     })()));
 
     await Promise.all(workers);
+
+    // 寫入 SUMMARY.txt
+    reportLines.push("");
+    reportLines.push(`總數：${total}　成功：${ok}　找不到密碼：${skipped}　加密失敗：${failed}`);
+    zip.file("SUMMARY.txt", reportLines.join("\n"));
 
     zipBlob = await zip.generateAsync({
       type: "blob",
@@ -132,14 +160,13 @@ function parseMapping(raw) {
     const line = lines[i].trim();
     if (!line) continue; // 空行
 
-    // 只支援分號最準；但若有人貼成逗號/Tab/豎線也盡量相容
+    // 主要使用 ';'；盡量相容 , / Tab / |
     let parts = line.split(";");
     if (parts.length < 2) {
       if (line.includes(",")) parts = line.split(",");
       else if (line.includes("\t")) parts = line.split("\t");
       else if (line.includes("|")) parts = line.split("|");
     }
-    // 取前兩欄：filename、password
     const filename = stripTrailingSemi((parts[0] || "").trim());
     const password = stripTrailingSemi((parts[1] || "").trim());
 
