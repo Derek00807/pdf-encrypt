@@ -3,25 +3,50 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>本地 PDF 批次加密 & ZIP 下載（不經伺服器）</title>
+  <title>本地 PDF 批次加密 & ZIP 下載（CDN 版）</title>
   <link rel="stylesheet" href="/style.css" />
+  <style>
+    .input-mode { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:8px 0 6px; }
+    .textarea { width:100%; min-height:160px; padding:10px; border:1px solid var(--border,#27335c); border-radius:10px; background:#0e1430; color:var(--text,#e9eef6); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .hint { font-size:12px; opacity:.8; margin-top:6px; }
+  </style>
 </head>
 <body>
   <main>
-    <h1>本地 PDF 批次加密 & ZIP 下載（CDN 版）</h1>
+    <h1>本地 PDF 批次加密 & ZIP 下載（CDN版）</h1>
 
     <form id="form">
+      <!-- 輸入方式切換 -->
       <div class="field">
-        <label>1) 上傳 CSV（filename;password，需含表頭）</label>
-        <input id="csv" type="file" accept=".csv,.txt" required />
+        <label>0) 輸入方式</label>
+        <div class="input-mode">
+          <label><input type="radio" name="mode" value="file" checked /> 上傳檔案</label>
+          <label><input type="radio" name="mode" value="paste" /> 貼上文字</label>
+        </div>
       </div>
+
+      <!-- 檔案模式 -->
+      <div class="field" id="file-block">
+        <label>1) 上傳 CSV/TXT（filename;password，可無表頭）</label>
+        <input id="csv" type="file" accept=".csv,.txt" />
+        <div class="hint">支援分隔符：<code>;</code>、<code>,</code>、Tab、<code>|</code>；全形標點會自動轉半形。</div>
+      </div>
+
+      <!-- 貼上模式 -->
+      <div class="field" id="paste-block" style="display:none;">
+        <label>1) 直接貼上內容（每行：<code>filename;password</code> 或含表頭的 CSV）</label>
+        <textarea id="csv-text" class="textarea" placeholder="王曉明.pdf;A123456789
+簡小德.pdf;B123456789"></textarea>
+        <div class="hint">支援分隔符：<code>;</code>、<code>,</code>、Tab、<code>|</code>；全形標點會自動轉半形。</div>
+      </div>
+
       <div class="field">
         <label>2) 上傳多個 PDF（可一次選取 ~100 份）</label>
         <input id="pdfs" type="file" accept="application/pdf" multiple required />
       </div>
 
       <div class="field row">
-        <button id="btn-parse" type="button">解析 CSV</button>
+        <button id="btn-parse" type="button">解析</button>
         <button id="btn-start" type="button" disabled>開始加密</button>
         <button id="btn-download" type="button" disabled>下載 ZIP</button>
       </div>
